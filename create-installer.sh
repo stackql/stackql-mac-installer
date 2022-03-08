@@ -44,7 +44,7 @@ echo $RESP | jq .artifacts | jq -c '.[]' | while read i; do
  if [ "$buildname" == "$1" ]; then
   url=`echo $i | jq .archive_download_url | tr -d '"'`
   # wget -O $BIN_DIR/$1.zip --header="Authorization: Token $GH_TOKEN" $url
-  curl -o $BIN_DIR/$1.zip --header="Authorization: Token $GH_TOKEN" "$url"
+  curl -o $BIN_DIR/$1.zip -H "Authorization: Token $GH_TOKEN" "$url"
   break
  fi 
 done   
