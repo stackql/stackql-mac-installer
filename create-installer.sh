@@ -66,6 +66,12 @@ notarizefile() { # $1: path to file to notarize, $2: identifier
     filepath=${1:?"need a filepath"}
     identifier=${2:?"need an identifier"}
     
+    echo "primary-bundle-id = $identifier"
+    echo "username = $dev_account"
+    echo "password = @keychain:$dev_keychain_label"
+    echo "asc-provider = $dev_team"
+    echo "file = $filepath"
+    
     # upload file
     echo "## uploading $filepath for notarization"
     requestUUID=$(xcrun altool --notarize-app \
@@ -106,22 +112,22 @@ notarizefile() { # $1: path to file to notarize, $2: identifier
 }
 
 # clean bin and target dirs
-log_info "deleting bin/ and target/ contents..."
-rm -f $BIN_DIR/stackql
-rm -f $BIN_DIR/stackql.gz
-rm -f $BIN_DIR/stackql_amd64
-rm -f $BIN_DIR/stackql_arm64
-rm -f $BIN_DIR/stackql_darwin_arm64.zip
-rm -f $BIN_DIR/stackql_darwin_amd64.zip
-rm -f $TARGET_DIR/archive/stackql*
-rm -f $TARGET_DIR/package/stackql*
+#log_info "deleting bin/ and target/ contents..."
+#rm -f $BIN_DIR/stackql
+#rm -f $BIN_DIR/stackql.gz
+#rm -f $BIN_DIR/stackql_amd64
+#rm -f $BIN_DIR/stackql_arm64
+#rm -f $BIN_DIR/stackql_darwin_arm64.zip
+#rm -f $BIN_DIR/stackql_darwin_amd64.zip
+#rm -f $TARGET_DIR/archive/stackql*
+#rm -f $TARGET_DIR/package/stackql*
 
 # download mac builds
 log_info "downloading ARM build..."
-downloadBuild "stackql_darwin_arm64"
+#downloadBuild "stackql_darwin_arm64"
 
 log_info "downloading x64 build..."
-downloadBuild "stackql_darwin_amd64"
+#downloadBuild "stackql_darwin_amd64"
 
 # unzip binaries
 cd $BIN_DIR
