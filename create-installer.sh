@@ -3,6 +3,9 @@
 #
 
 # parameters
+echo "enter app specific password:"
+read app_spec_pwd
+
 SCRIPTPATH="$( cd -- "$(dirname "$0")" >/dev/null 2>&1 ; pwd -P )"
 TARGET_DIR="$SCRIPTPATH/dist"
 BIN_DIR="$SCRIPTPATH/bin"
@@ -57,7 +60,7 @@ requeststatus() { # $1: requestUUID
     requestUUID=${1?:"need a request UUID"}
     req_status=$(xcrun altool --notarization-info "$requestUUID" \
                               --username "$dev_account" \
-                              --password "@keychain:$dev_keychain_label" 2>&1 \
+                              --password "$app_spec_pwd" 2>&1 \
                  | awk -F ': ' '/Status:/ { print $2; }' )
     echo "$req_status"
 }
@@ -66,18 +69,12 @@ notarizefile() { # $1: path to file to notarize, $2: identifier
     filepath=${1:?"need a filepath"}
     identifier=${2:?"need an identifier"}
     
-    echo "primary-bundle-id = $identifier"
-    echo "username = $dev_account"
-    echo "password = @keychain:$dev_keychain_label"
-    echo "asc-provider = $dev_team"
-    echo "file = $filepath"
-    
     # upload file
     echo "## uploading $filepath for notarization"
     requestUUID=$(xcrun altool --notarize-app \
                                --primary-bundle-id "$identifier" \
                                --username "$dev_account" \
-                               --password "@keychain:$dev_keychain_label" \
+                               --password "$app_spec_pwd" \
                                --asc-provider "$dev_team" \
                                --file "$filepath" 2>&1 \
                   | awk '/RequestUUID/ { print $NF; }')
@@ -112,15 +109,15 @@ notarizefile() { # $1: path to file to notarize, $2: identifier
 }
 
 # clean bin and target dirs
-#log_info "deleting bin/ and target/ contents..."
-#rm -f $BIN_DIR/stackql
-#rm -f $BIN_DIR/stackql.gz
-#rm -f $BIN_DIR/stackql_amd64
-#rm -f $BIN_DIR/stackql_arm64
+log_info "deleting bin/ and target/ contents..."
+rm -f $BIN_DIR/stackql
+rm -f $BIN_DIR/stackql.gz
+rm -f $BIN_DIR/stackql_amd64
+rm -f $BIN_DIR/stackql_arm64
 #rm -f $BIN_DIR/stackql_darwin_arm64.zip
 #rm -f $BIN_DIR/stackql_darwin_amd64.zip
-#rm -f $TARGET_DIR/archive/stackql*
-#rm -f $TARGET_DIR/package/stackql*
+rm -f $TARGET_DIR/archive/stackql*
+rm -f $TARGET_DIR/package/stackql*
 
 # download mac builds
 log_info "downloading ARM build..."
