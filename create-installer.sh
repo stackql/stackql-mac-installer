@@ -41,8 +41,11 @@ function downloadBuild() {
 log_info "getting latest build for $1"
 echo $RESP | jq .artifacts | jq -c '.[]' | while read i; do
  buildname=`echo $i | jq .name | tr -d '"'`
+ echo "buildname = $buildname"
  if [ "$buildname" == "$1" ]; then
   url=`echo $i | jq .archive_download_url | tr -d '"'`
+  echo "url = $url"
+  echo "BIN_DIR = $BIN_DIR"
   # wget -O $BIN_DIR/$1.zip --header="Authorization: Token $GH_TOKEN" $url
   curl -o $BIN_DIR/$1.zip -H "Authorization: Token $GH_TOKEN" "$url"
   break
