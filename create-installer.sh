@@ -23,7 +23,7 @@ dev_account="javen@infraql.io"
 app_signature="Developer ID Application: INFRAQL TECHNOLOGIES PTY LTD"
 inst_signature="Developer ID Installer: INFRAQL TECHNOLOGIES PTY LTD"
 dev_team="83KAM4RHT5"
-dev_keychain_label="Developer-altool"
+#dev_keychain_label="Developer-altool"
 
 # functions
 log_info() {
@@ -98,7 +98,7 @@ notarizefile() { # $1: path to file to notarize, $2: identifier
     # print status information
     xcrun altool --notarization-info "$requestUUID" \
                  --username "$dev_account" \
-                 --password "@keychain:$dev_keychain_label"
+                 --password "$app_spec_pwd"
     echo 
     
     if [[ $request_status != "success" ]]; then
