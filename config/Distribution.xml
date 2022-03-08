@@ -1,0 +1,88 @@
+<?xml version="1.0" encoding="utf-8"?>
+<installer-gui-script minSpecVersion="1">
+    <pkg-ref id="org.infraql.1.2.3"/>
+    <options customize="never" require-scripts="false" hostArchitectures="x86_64,arm64"/>
+    <choices-outline>
+        <line choice="default">
+            <line choice="org.infraql.1.2.3"/>
+        </line>
+    </choices-outline>
+    <choice id="default"/>
+    <choice id="org.infraql.1.2.3" visible="false">
+        <pkg-ref id="org.infraql.1.2.3"/>
+    </choice>
+    <pkg-ref id="org.infraql.1.2.3" version="1.2.3" onConclusion="none">infraql.pkg</pkg-ref>
+</installer-gui-script>
+
+
+  <license file="LICENSE.html"/>
+  <readme file="README.html"/>
+  
+<?xml version="1.0" encoding="utf-8" standalone="no"?>
+<installer-gui-script minSpecVersion="1">
+    <title>Some daemon</title>
+    <organization>org.someid</organization>
+    <domains enable_localSystem="true"/>
+    <options customize="never" require-scripts="true" rootVolumeOnly="true" />
+    <!-- Define documents displayed at various steps -->
+    <welcome    file="welcome.html"    mime-type="text/html" />
+    <license    file="license.html"    mime-type="text/html" />
+    <conclusion file="conclusion.html" mime-type="text/html" />
+    <!-- List all component packages -->
+    <pkg-ref id="org.someid.daemon"
+             version="0"
+             auth="root">output.pkg</pkg-ref>
+    <!-- List them again here. They can now be organized
+         as a hierarchy if you want. -->
+    <choices-outline>
+        <line choice="org.someid.daemon"/>
+    </choices-outline>
+    <!-- Define each choice above -->
+    <choice
+        id="org.someid.daemon"
+        visible="false"
+        title="some daemon"
+        description="The daemon"
+        start_selected="true">
+      <pkg-ref id="org.someid.daemon"/>
+    </choice>
+</installer-gui-script>  
+
+
+
+<?xml version="1.0" encoding="utf-8" standalone="no"?>
+<installer-script minSpecVersion="1.000000">
+    <title>__PRODUCT__</title>
+    <background mime-type="image/png" file="banner.png" scaling="proportional"/>
+    <background-darkAqua mime-type="image/png" file="banner.png" scaling="proportional"/>
+    <welcome file="welcome.html" mime-type="text/html" />
+    <conclusion file="conclusion.html" mime-type="text/html" />
+    <license file="LICENSE.txt"/>
+    <options customize="never" allow-external-scripts="no"/>
+    <domains enable_localSystem="true" />
+    <installation-check script="installCheck();"/>
+    <script>
+function installCheck() {
+    if(!(system.compareVersions(system.version.ProductVersion, '10.6.0') >= 0)) {
+        my.result.title = 'Unable to install';
+        my.result.message = '__PRODUCT__ requires Mac OS X 10.6 or later.';
+        my.result.type = 'Fatal';
+        return false;
+    }
+    if(system.files.fileExistsAtPath('/Library/__PRODUCT__/__VERSION__/')) {
+        my.result.title = 'Previous Installation Detected';
+        my.result.message = 'A previous installation of __PRODUCT__ exists at /Library/__PRODUCT__/__VERSION__/. This installer will remove the previous installation prior to installing. Please back up any data before proceeding.';
+        my.result.type = 'Warning';
+        return false;
+    }
+    return true;
+}
+    </script>
+    <choices-outline>
+        <line choice="__PRODUCT__"/>
+    </choices-outline>
+    <choice id="__PRODUCT__" title="__PRODUCT__">
+        <pkg-ref id="__PRODUCT__.pkg"/>
+    </choice>
+    <pkg-ref id="__PRODUCT__.pkg" auth="Root">__PRODUCT__.pkg</pkg-ref>
+</installer-script>
