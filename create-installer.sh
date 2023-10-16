@@ -15,15 +15,12 @@ SCRIPTS_DIR="$SCRIPTPATH/scripts"
 DATE=`date +%Y-%m-%d`
 TIME=`date +%H:%M:%S`
 LOG_PREFIX="[$DATE $TIME]"
-REPO=stackql-devel
-GH_TOKEN=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
-RESP=`curl https://api.github.com/repos/stackql/${REPO}/actions/artifacts \
-   -H "Authorization: Token $GH_TOKEN"`
-dev_account="javen@infraql.io"
-app_signature="Developer ID Application: INFRAQL TECHNOLOGIES PTY LTD"
-inst_signature="Developer ID Installer: INFRAQL TECHNOLOGIES PTY LTD"
-dev_team="83KAM4RHT5"
-#dev_keychain_label="Developer-altool"
+#RESP=`curl https://api.github.com/repos/stackql/${REPO}/actions/artifacts \
+#   -H "Authorization: Token $GH_TOKEN"`
+dev_account="javen@stackql.io"
+app_signature="Developer ID Application: StackQL Studios Pty Ltd"
+inst_signature="Developer ID Installer: StackQL Studios Pty Ltd"
+dev_team="788LJ9XDZ4"
 
 # functions
 log_info() {
@@ -52,8 +49,8 @@ echo $RESP | jq .artifacts | jq -c '.[]' | while read i; do
   # wget -O $BIN_DIR/$1.zip --header="Authorization: Token $GH_TOKEN" $url
   curl -o $BIN_DIR/$1.zip -H "Authorization: Token $GH_TOKEN" "$url"
   break
- fi 
-done   
+ fi
+done
 }
 
 requeststatus() { # $1: requestUUID
@@ -68,7 +65,7 @@ requeststatus() { # $1: requestUUID
 notarizefile() { # $1: path to file to notarize, $2: identifier
     filepath=${1:?"need a filepath"}
     identifier=${2:?"need an identifier"}
-    
+
     # upload file
     echo "## uploading $filepath for notarization"
     requestUUID=$(xcrun altool --notarize-app \
@@ -78,14 +75,20 @@ notarizefile() { # $1: path to file to notarize, $2: identifier
                                --asc-provider "$dev_team" \
                                --file "$filepath" 2>&1 \
                   | awk '/RequestUUID/ { print $NF; }')
-                               
+
     echo "Notarization RequestUUID: $requestUUID"
-    
-    if [[ $requestUUID == "" ]]; then 
+
+    if [[ $requestUUID == "" ]]; then
         echo "could not upload for notarization"
+				xcrun altool --notarize-app \
+		                               --primary-bundle-id "$identifier" \
+		                               --username "$dev_account" \
+		                               --password "$app_spec_pwd" \
+		                               --asc-provider "$dev_team" \
+		                               --file "$filepath"
         exit 1
     fi
-        
+
     # wait for status to be not "in progress" any more
     request_status="in progress"
     while [[ "$request_status" == "in progress" ]]; do
@@ -94,18 +97,18 @@ notarizefile() { # $1: path to file to notarize, $2: identifier
         request_status=$(requeststatus "$requestUUID")
         echo "$request_status"
     done
-    
+
+		if [[ $request_status != "success" ]]; then
+        echo "## could not notarize $filepath"
+				echo $request_status
+        exit 1
+    fi
+
     # print status information
     xcrun altool --notarization-info "$requestUUID" \
                  --username "$dev_account" \
                  --password "$app_spec_pwd"
-    echo 
-    
-    if [[ $request_status != "success" ]]; then
-        echo "## could not notarize $filepath"
-        exit 1
-    fi
-    
+    echo
 }
 
 # clean bin and target dirs
@@ -138,6 +141,10 @@ log_info "unzipping x64 build..."
 unzip stackql_darwin_amd64.zip
 log_info "renaming x64 build..."
 mv stackql stackql_amd64
+
+ls .
+
+read -p "press any key to continue"
 
 # combine
 log_info "combining builds..."
