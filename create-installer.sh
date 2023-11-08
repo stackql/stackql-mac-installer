@@ -2,10 +2,6 @@
 # StackQL multi-arch installer for MacOS
 #
 
-# parameters
-echo "enter app specific password:"
-read app_spec_pwd
-
 SCRIPTPATH="$( cd -- "$(dirname "$0")" >/dev/null 2>&1 ; pwd -P )"
 TARGET_DIR="$SCRIPTPATH/dist"
 BIN_DIR="$SCRIPTPATH/bin"
@@ -17,10 +13,11 @@ TIME=`date +%H:%M:%S`
 LOG_PREFIX="[$DATE $TIME]"
 #RESP=`curl https://api.github.com/repos/stackql/${REPO}/actions/artifacts \
 #   -H "Authorization: Token $GH_TOKEN"`
-dev_account="javen@stackql.io"
-app_signature="Developer ID Application: StackQL Studios Pty Ltd"
-inst_signature="Developer ID Installer: StackQL Studios Pty Ltd"
-dev_team="788LJ9XDZ4"
+dev_account="${DEV_ACCOUNT}"
+app_signature="${APP_SIGNATURE}"
+inst_signature="${INST_SIGNATURE}"
+dev_team="${DEV_TEAM}"
+app_spec_pwd="${APP_SPECIFIC_PASSWORD}"
 
 # functions
 log_info() {
