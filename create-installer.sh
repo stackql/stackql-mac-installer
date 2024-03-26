@@ -1,6 +1,8 @@
 #
 # StackQL multi-arch installer for MacOS
 #
+read -s -p "Enter app-specific password: " app_spec_pwd
+echo ""
 
 SCRIPTPATH="$( cd -- "$(dirname "$0")" >/dev/null 2>&1 ; pwd -P )"
 TARGET_DIR="$SCRIPTPATH/dist"
@@ -17,7 +19,7 @@ dev_account="${DEV_ACCOUNT}"
 app_signature="${APP_SIGNATURE}"
 inst_signature="${INST_SIGNATURE}"
 dev_team="${DEV_TEAM}"
-app_spec_pwd="${APP_SPECIFIC_PASSWORD}"
+# app_spec_pwd="${APP_SPECIFIC_PASSWORD}"
 
 # functions
 log_info() {
@@ -50,62 +52,49 @@ echo $RESP | jq .artifacts | jq -c '.[]' | while read i; do
 done
 }
 
-requeststatus() { # $1: requestUUID
-    requestUUID=${1?:"need a request UUID"}
-    req_status=$(xcrun altool --notarization-info "$requestUUID" \
-                              --username "$dev_account" \
-                              --password "$app_spec_pwd" 2>&1 \
-                 | awk -F ': ' '/Status:/ { print $2; }' )
-    echo "$req_status"
-}
-
-notarizefile() { # $1: path to file to notarize, $2: identifier
+# notarize package using notarytool
+notarizefile() {
     filepath=${1:?"need a filepath"}
     identifier=${2:?"need an identifier"}
 
-    # upload file
+    # upload file using notarytool and wait for the notarization to complete
     echo "## uploading $filepath for notarization"
-    requestUUID=$(xcrun altool --notarize-app \
-                               --primary-bundle-id "$identifier" \
-                               --username "$dev_account" \
-                               --password "$app_spec_pwd" \
-                               --asc-provider "$dev_team" \
-                               --file "$filepath" 2>&1 \
-                  | awk '/RequestUUID/ { print $NF; }')
+    notarization_result=$(xcrun notarytool submit "$filepath" \
+                               --keychain-profile "AC_PASSWORD" \
+                               --wait \
+                               --output-format json)
 
-    echo "Notarization RequestUUID: $requestUUID"
+    notarization_info=$(echo "$notarization_result" | jq -r '.id')
+    echo "Notarization Info: $notarization_info"
 
-    if [[ $requestUUID == "" ]]; then
-        echo "could not upload for notarization"
-				xcrun altool --notarize-app \
-		                               --primary-bundle-id "$identifier" \
-		                               --username "$dev_account" \
-		                               --password "$app_spec_pwd" \
-		                               --asc-provider "$dev_team" \
-		                               --file "$filepath"
+    # Check if notarization failed
+    if [[ $notarization_info == "" ]]; then
+        echo "Could not upload for notarization"
+        echo "$notarization_result"
         exit 1
     fi
 
-    # wait for status to be not "in progress" any more
-    request_status="in progress"
-    while [[ "$request_status" == "in progress" ]]; do
-        echo -n "waiting... "
-        sleep 10
-        request_status=$(requeststatus "$requestUUID")
-        echo "$request_status"
-    done
-
-		if [[ $request_status != "success" ]]; then
+    # Extracting the status
+    notarization_status=$(echo "$notarization_result" | jq -r '.status')
+    if [[ $notarization_status != "Accepted" ]]; then
         echo "## could not notarize $filepath"
-				echo $request_status
+        echo "$notarization_result"
         exit 1
     fi
 
-    # print status information
-    xcrun altool --notarization-info "$requestUUID" \
-                 --username "$dev_account" \
-                 --password "$app_spec_pwd"
-    echo
+    echo "## notarization was successful for $filepath"
+}
+
+# staple notarization ticket to package using notarytool
+staplefile() {
+    filepath=${1:?"need a filepath"}
+    echo "## stapling ticket to $filepath"
+    xcrun notarytool staple "$filepath"
+    if [[ $? != 0 ]]; then
+        echo "## could not staple $filepath"
+        exit 1
+    fi
+    echo "## successfully stapled ticket to $filepath"
 }
 
 # clean bin and target dirs
@@ -187,7 +176,7 @@ notarizefile "${TARGET_DIR}/package/stackql_darwin_multiarch.pkg" "com.stackql.p
 
 # staple ticket
 log_info "stapling ticket..."
-xcrun stapler staple "${TARGET_DIR}/package/stackql_darwin_multiarch.pkg"
+staplefile "${TARGET_DIR}/package/stackql_darwin_multiarch.pkg"
 
 # create versioned package
 log_info "creating versioned package..."
