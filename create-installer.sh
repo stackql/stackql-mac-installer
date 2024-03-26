@@ -60,7 +60,7 @@ notarizefile() {
     # upload file using notarytool and wait for the notarization to complete
     echo "## uploading $filepath for notarization"
     notarization_result=$(xcrun notarytool submit "$filepath" \
-                               --keychain-profile "AC_PASSWORD" \
+                               --keychain-profile "stackql" \
                                --wait \
                                --output-format json)
 
@@ -89,7 +89,7 @@ notarizefile() {
 staplefile() {
     filepath=${1:?"need a filepath"}
     echo "## stapling ticket to $filepath"
-    xcrun notarytool staple "$filepath"
+    xcrun stapler staple "$filepath"
     if [[ $? != 0 ]]; then
         echo "## could not staple $filepath"
         exit 1

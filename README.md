@@ -16,3 +16,11 @@ APP_SIGNATURE=...
 INST_SIGNATURE=...
 sh create-mac-installer.sh
 ```
+
+### Prereq For Mac In Cloud (without admin priveleges)
+
+```bash
+mkdir $HOME/.homebrew && curl -L https://github.com/Homebrew/brew/tarball/master | tar xz --strip 1 -C $HOME/.homebrew
+export PATH=$HOME/.homebrew/bin:$PATH
+brew install jq
+```
