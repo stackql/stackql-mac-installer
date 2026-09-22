@@ -1,0 +1,2 @@
+*.sh text eol=lf
+vars.sh.example text eol=lf

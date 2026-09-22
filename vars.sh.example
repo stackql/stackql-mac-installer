@@ -1,0 +1,18 @@
+# Machine specific values for create-installer.sh
+# Copy this file to vars.sh (gitignored) on the packaging machine and populate it.
+# Never commit vars.sh.
+
+# Apple developer team id and the Apple ID used for notarization
+export DEV_TEAM="788LJ9XDZ4"
+export DEV_ACCOUNT=""
+
+# Developer ID signing identities installed in the login keychain on this machine
+export APP_SIGNATURE="Developer ID Application: StackQL Studios Pty Ltd (${DEV_TEAM})"
+export INST_SIGNATURE="Developer ID Installer: StackQL Studios Pty Ltd (${DEV_TEAM})"
+
+# Password for the login keychain on this machine (used to unlock it before signing)
+export KEYCHAIN_PASSWORD=""
+
+# App specific password for DEV_ACCOUNT, generated at https://appleid.apple.com
+# (stored in the keychain as the "stackql" notarytool profile on each run)
+export APPLE_APP_PASSWORD=""
