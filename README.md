@@ -33,11 +33,11 @@ The script will:
 2. Look up the `Build` workflow run for the build number and download the `stackql_darwin_amd64` and `stackql_darwin_arm64` artifacts to `downloads/` (gitignored)
 3. Extract both binaries, combine them into a universal binary with `lipo` and read the version from `stackql --version`
 4. Look up the GitHub release for the version, if it does not exist the script stops with `Release x.x.x does not exist, please create it first`
-5. Check whether `stackql_darwin_multiarch.pkg` is already an asset of that release
+5. Check whether `stackql_darwin_multiarch.pkg` and its `.sha256` sidecar are already assets of that release, and read the SHA-256 digest GitHub recorded for the package
 6. Sign the binary, build the `pkg`, notarize it and staple the ticket
-7. Upload `stackql_darwin_multiarch.pkg` to the release, or, if the asset already exists, leave the package in `dist/package/` for a manual update
+7. Compute `stackql_darwin_multiarch.pkg.sha256` (sha256sum format) from the stapled package, upload the package and the sidecar to the release and verify the digest GitHub recorded for the attached package, or, if the package already exists, leave it in `dist/package/` for a manual update and upload the sidecar only if the attached package is byte-identical to the local one
 
-Outputs are written to `dist/package/stackql_darwin_multiarch.pkg` and `dist/package/stackql_<version>_darwin_multiarch.pkg`.
+Outputs are written to `dist/package/stackql_darwin_multiarch.pkg`, `dist/package/stackql_darwin_multiarch.pkg.sha256` and `dist/package/stackql_<version>_darwin_multiarch.pkg`.
 
 ## Configuration
 

@@ -5,7 +5,9 @@
 # Downloads the darwin build artifacts for a given build number from the
 # stackql GitHub Actions build workflow, combines them into a universal (fat)
 # binary, signs it, creates a signed pkg, notarizes and staples the pkg, then
-# uploads the pkg to the matching GitHub release.
+# uploads the pkg and its SHA-256 sidecar (<pkg>.sha256, sha256sum format) to
+# the matching GitHub release and verifies the digest GitHub recorded for the
+# attached bytes against the local one.
 #
 # usage:
 #   bash create-installer.sh <build_number>
@@ -35,6 +37,8 @@ ARTIFACT_AMD64="stackql_darwin_amd64"
 ARTIFACT_ARM64="stackql_darwin_arm64"
 PKG_NAME="stackql_darwin_multiarch.pkg"
 PKG_FILE="${TARGET_DIR}/package/${PKG_NAME}"
+SIDECAR_NAME="${PKG_NAME}.sha256"
+SIDECAR_FILE="${PKG_FILE}.sha256"
 NOTARY_PROFILE="stackql"
 
 # functions
@@ -119,6 +123,27 @@ staplefile() {
         exit 1
     fi
     echo "## successfully stapled ticket to $filepath"
+}
+
+# check that the digest GitHub recorded for the attached pkg is the local one
+verify_remote_digest() {
+    local remote
+    remote=$(gh api "repos/${GH_REPO}/releases/tags/${RELEASE_TAG}" \
+        --jq ".assets[] | select(.name == \"${PKG_NAME}\") | .digest // \"-\"")
+    [[ "$remote" == "sha256:${PKG_SHA256}" ]] \
+        || die "digest mismatch: release ${RELEASE_TAG} holds ${PKG_NAME} with digest '${remote}', the local package is sha256:${PKG_SHA256}"
+    echo "verified: the ${PKG_NAME} on release ${RELEASE_TAG} is sha256:${PKG_SHA256}"
+}
+
+# upload the sidecar unless it is already on the release
+upload_sidecar() {
+    if [[ -n "$SIDECAR_REMOTE" ]]; then
+        echo "${SIDECAR_NAME} already exists in release ${RELEASE_TAG}, skipping"
+        return 0
+    fi
+    log_info "uploading ${SIDECAR_NAME} to release ${RELEASE_TAG}..."
+    gh release upload "$RELEASE_TAG" "$SIDECAR_FILE" --repo "$GH_REPO" || die "upload of ${SIDECAR_NAME} failed, it is saved at ${SIDECAR_FILE}"
+    echo "uploaded ${SIDECAR_NAME} to https://github.com/${GH_REPO}/releases/tag/${RELEASE_TAG}"
 }
 
 # ---------------------------------------------------------------------------
@@ -241,16 +266,18 @@ if [[ $RELEASE_RC -ne 0 ]]; then
     die "could not look up release ${RELEASE_TAG}: ${RELEASE_ERR}"
 fi
 
-PKG_EXISTS=$(gh release view "$RELEASE_TAG" --repo "$GH_REPO" --json assets \
-    --jq "[.assets[].name] | index(\"${PKG_NAME}\") != null")
-if [[ "$PKG_EXISTS" == "true" ]]; then
+# every attached asset with the sha256 digest GitHub recorded for its bytes ("-" if none)
+RELEASE_ASSETS=$(gh api "repos/${GH_REPO}/releases/tags/${RELEASE_TAG}" \
+    --jq '.assets[] | "\(.name) \(.digest // "-")"' 2>&1) \
+    || die "could not list assets for release ${RELEASE_TAG}: ${RELEASE_ASSETS}"
+PKG_REMOTE_DIGEST=$(echo "$RELEASE_ASSETS" | awk -v n="$PKG_NAME" '$1 == n {print $2}')
+SIDECAR_REMOTE=$(echo "$RELEASE_ASSETS" | awk -v n="$SIDECAR_NAME" '$1 == n {print $1}')
+if [[ -n "$PKG_REMOTE_DIGEST" ]]; then
     UPLOAD_PKG="false"
-    echo "The ${PKG_NAME} asset already exists in release ${VERSION}, the package will be saved locally for a manual update"
-elif [[ "$PKG_EXISTS" == "false" ]]; then
+    echo "The ${PKG_NAME} asset already exists in release ${VERSION} (digest ${PKG_REMOTE_DIGEST}), the package will be saved locally for a manual update"
+else
     UPLOAD_PKG="true"
     echo "${PKG_NAME} is not in release ${VERSION} yet, it will be uploaded after packaging"
-else
-    die "could not list assets for release ${RELEASE_TAG}: ${PKG_EXISTS}"
 fi
 
 # ---------------------------------------------------------------------------
@@ -295,15 +322,36 @@ log_info "creating versioned package..."
 cp "$PKG_FILE" "${TARGET_DIR}/package/stackql_${VERSION}_darwin_multiarch.pkg"
 
 # ---------------------------------------------------------------------------
-# step 9: upload the pkg to the release (skipped if the asset already exists)
+# step 8b: compute the SHA-256 sidecar of the stapled package
+# ---------------------------------------------------------------------------
+# Computed after stapling, since stapling changes the pkg bytes. sha256sum
+# format (lowercase hex, two spaces, bare filename) so 'shasum -c' and
+# 'sha256sum -c' both accept it, matching the .mcpb.sha256 sidecars.
+log_info "computing the sha256 of ${PKG_NAME}..."
+( cd "$(dirname "$PKG_FILE")" && shasum -a 256 "$PKG_NAME" > "$SIDECAR_NAME" ) || die "could not compute the sha256 of ${PKG_FILE}"
+PKG_SHA256=$(awk '{print $1}' "$SIDECAR_FILE")
+[[ "$PKG_SHA256" =~ ^[0-9a-f]{64}$ ]] || die "unexpected sha256 output in ${SIDECAR_FILE}"
+cat "$SIDECAR_FILE"
+
+# ---------------------------------------------------------------------------
+# step 9: upload the pkg and its sidecar to the release (the pkg is skipped if
+# the asset already exists), then verify the digest GitHub recorded for the
+# attached bytes. The sidecar is only published when the attached pkg is
+# byte-identical to the local one, so it never describes other bytes.
 # ---------------------------------------------------------------------------
 if [[ "$UPLOAD_PKG" == "true" ]]; then
     log_info "uploading ${PKG_NAME} to release ${RELEASE_TAG}..."
     gh release upload "$RELEASE_TAG" "$PKG_FILE" --repo "$GH_REPO" || die "upload failed, the package is saved at ${PKG_FILE}"
     echo "uploaded ${PKG_NAME} to https://github.com/${GH_REPO}/releases/tag/${RELEASE_TAG}"
+    verify_remote_digest
+    upload_sidecar
+elif [[ "$PKG_REMOTE_DIGEST" == "sha256:${PKG_SHA256}" ]]; then
+    log_info "skipping upload, ${PKG_NAME} already exists in release ${RELEASE_TAG} and is byte-identical to the local package"
+    upload_sidecar
 else
     log_info "skipping upload, ${PKG_NAME} already exists in release ${RELEASE_TAG}"
     echo "package saved at ${PKG_FILE} for a manual update"
+    log_warn "the attached ${PKG_NAME} has digest '${PKG_REMOTE_DIGEST}' but the local package is sha256:${PKG_SHA256}; not uploading ${SIDECAR_NAME} since it would not describe the attached bytes. Delete the asset from the release and re-run to replace it."
 fi
 
 log_info "DONE!!!"
